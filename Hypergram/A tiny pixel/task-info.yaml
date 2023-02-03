@@ -1,0 +1,512 @@
+type: edu
+files:
+- name: src/index.html
+  visible: true
+  text: |
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <title>Hypergram</title>
+    </head>
+    <body>
+
+    </body>
+    </html>
+  learner_created: false
+- name: test/images/testBrightness.png
+  visible: false
+  learner_created: false
+- name: test/images/testContrast.png
+  visible: false
+  learner_created: false
+- name: test/images/testImage.png
+  visible: false
+  learner_created: false
+- name: test/images/testMultipleFilters.png
+  visible: false
+  learner_created: false
+- name: test/images/testTransparent.png
+  visible: false
+  learner_created: false
+- name: test/test.js
+  visible: false
+  text: |
+    const puppeteer = require('puppeteer');
+    const pixels = require('image-pixels')
+    const path = require('path');
+
+    const {StageTest, correct, wrong} = require('hs-test-web');
+
+    const sleep = (ms) => new Promise(res => setTimeout(res, ms));
+
+    const pagePath = 'file://' + path.resolve(__dirname, '../src/index.html');
+    const imageFolderPath = path.resolve(__dirname, '../test/images/');
+    const initImage = imageFolderPath + '/testImage.png'
+    const brightnessTestImage = imageFolderPath + '/testBrightness.png'
+    const contrastTestImage = imageFolderPath + '/testContrast.png'
+    const transparentTestImage = imageFolderPath + '/testTransparent.png'
+    const multipleFilterTestImage = imageFolderPath + '/testMultipleFilters.png'
+
+    function comparePixels(userPixels, correctPixels, errorMessage) {
+        if (correctPixels.length !== Object.keys(userPixels).length) {
+            return wrong("Wrong number ox pixels on the canvas!")
+        }
+
+        for (let i = 0; i < correctPixels.length; i++) {
+            if (correctPixels[i] !== userPixels[i]) {
+                return wrong(errorMessage)
+            }
+        }
+    }
+
+
+    class HypergramTest extends StageTest {
+
+        page = this.getPage(pagePath)
+
+        tests = [
+            this.page.execute(() => {
+                const canvas = document.getElementsByTagName("canvas");
+                if (canvas.length !== 1) {
+                    return wrong("There is should be 1 canvas element in the page!")
+                }
+                this.getPixels = () => {
+                    const canvas = document.getElementsByTagName("canvas")[0];
+                    if (canvas.width !== 30 || canvas.height !== 30) {
+                        return wrong("After uploading an image into canvas it has wrong size!")
+                    }
+                    const ctx = canvas.getContext("2d");
+                    return ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+                }
+                return correct()
+            }),
+            this.page.execute(() => {
+                this.brightnessSlider = document.getElementById("brightness")
+                this.contrastSlider = document.getElementById("contrast")
+                this.transparentSlider = document.getElementById("transparent")
+
+                if (this.brightnessSlider === null) {
+                    return wrong("Can't find a brightness slider! There is should be an input tag with #brightness id.")
+                }
+
+                if (!this.brightnessSlider.hasAttribute("min") ||
+                    !this.brightnessSlider.hasAttribute("max") ||
+                    !this.brightnessSlider.hasAttribute("step")) {
+                    return wrong("Looks like your brightness slider doesn't have one of the following attributes:" +
+                        " 'min', 'max' or 'step'")
+                }
+
+                if (this.contrastSlider === null) {
+                    return wrong("Can't find a contrast slider! There is should be an input tag with #contrast id.")
+                }
+
+                if (!this.contrastSlider.hasAttribute("min") ||
+                    !this.contrastSlider.hasAttribute("max") ||
+                    !this.contrastSlider.hasAttribute("step")) {
+                    return wrong("Looks like your brightness slider doesn't have one of the following attributes:" +
+                        " 'min', 'max' or 'step'")
+                }
+
+                if (this.transparentSlider === null) {
+                    return wrong("Can't find a transparent slider! There is should be an input tag with #transparent id.")
+                }
+
+                if (!this.transparentSlider.hasAttribute("min") ||
+                    !this.transparentSlider.hasAttribute("max") ||
+                    !this.transparentSlider.hasAttribute("step")) {
+                    return wrong("Looks like your brightness slider doesn't have one of the following attributes:" +
+                        " 'min', 'max' or 'step'")
+                }
+
+                return correct()
+            }),
+            this.page.execute(() => {
+
+                const brightnessMinValue = parseInt(this.brightnessSlider.getAttribute("min"));
+                const brightnessMaxValue = parseInt(this.brightnessSlider.getAttribute("max"));
+                const brightnessStepValue = parseInt(this.brightnessSlider.getAttribute("step"));
+
+                if (brightnessMinValue !== -255 || brightnessMaxValue !== 255 || brightnessStepValue !== 1) {
+                    return wrong("Brightness slider should have the following attribute values: " +
+                        "min=-255, max=255, step=1")
+                }
+
+                const contrastMinValue = parseInt(this.contrastSlider.getAttribute("min"));
+                const contrastMaxValue = parseInt(this.contrastSlider.getAttribute("max"));
+                const contrastStepValue = parseInt(this.contrastSlider.getAttribute("step"));
+
+                if (contrastMinValue !== -128 || contrastMaxValue !== 128 || contrastStepValue !== 1) {
+                    return wrong("Contrast slider should have the following attribute values: " +
+                        "min=-128, max=128, step=1")
+                }
+
+                const transparentMinValue = parseInt(this.transparentSlider.getAttribute("min"));
+                const transparentMaxValue = parseInt(this.transparentSlider.getAttribute("max"));
+                const transparentStepValue = parseFloat(this.transparentSlider.getAttribute("step"));
+
+                if (transparentMinValue !== 0 || transparentMaxValue !== 1 || transparentStepValue !== 0.1) {
+                    return wrong("Transparent slider should have the following attribute values: " +
+                        "min=0, max=1, step=0.1")
+                }
+
+                const brightnessDefaultValue = parseInt(this.brightnessSlider.value)
+                const contrastDefaultValue = parseInt(this.contrastSlider.value)
+                const transparentDefaultValue = parseInt(this.transparentSlider.value)
+
+                if (brightnessDefaultValue !== 0) {
+                    return wrong("The default value of the brightness slider should be equal to 0!")
+                }
+
+                if (contrastDefaultValue !== 0) {
+                    return wrong("The default value of the contrast slider should be equal to 0!")
+                }
+
+                if (transparentDefaultValue !== 1) {
+                    return wrong("The default value of the transparent slider should be equal to 1!")
+                }
+
+                return correct()
+            }),
+            this.node.execute(async () => {
+                const uploadButton = await this.page.pageInstance.$("input[type='file']#file-input");
+                await uploadButton.uploadFile(initImage);
+                await uploadButton.evaluate(upload => upload.dispatchEvent(new Event('change', {bubbles: true})));
+                await sleep(500)
+
+                const userPixels = await this.page.evaluate(() => {
+                    return this.getPixels()
+                });
+
+                const {data} = await pixels(initImage)
+
+                const compareResult = comparePixels(userPixels, data,
+                    "After downloading an image into canvas it has wrong pixel values!");
+                if (compareResult) {
+                    return compareResult
+                }
+
+                return correct()
+            }),
+            this.node.execute(async () => {
+
+                // testBrightness 87
+                // testContrast 69
+                // testTransparent 0.5
+
+                let userPixels = await this.page.evaluate(() => {
+                    this.brightnessSlider.value = 87;
+                    this.brightnessSlider.dispatchEvent(new Event("change"))
+                    return this.getPixels()
+                });
+
+                let realPixels = await pixels(brightnessTestImage)
+
+                let compareResult = comparePixels(userPixels, realPixels.data,
+                    "After increasing brightness of the image it has wrong pixel values!");
+                if (compareResult) {
+                    return compareResult
+                }
+
+                userPixels = await this.page.evaluate(() => {
+                    this.brightnessSlider.value = 0;
+                    this.brightnessSlider.dispatchEvent(new Event("change"))
+                    return this.getPixels()
+                });
+
+                realPixels = await pixels(initImage)
+
+                compareResult = comparePixels(userPixels, realPixels.data,
+                    "After decreasing brightness of the image to the default value it has wrong pixel values!");
+                if (compareResult) {
+                    return compareResult
+                }
+
+                userPixels = await this.page.evaluate(() => {
+                    this.contrastSlider.value = 69;
+                    this.contrastSlider.dispatchEvent(new Event("change"))
+                    return this.getPixels()
+                });
+
+                realPixels = await pixels(contrastTestImage)
+
+                compareResult = comparePixels(userPixels, realPixels.data,
+                    "After increasing contrast of the image it has wrong pixel values!");
+                if (compareResult) {
+                    return compareResult
+                }
+
+                userPixels = await this.page.evaluate(() => {
+                    this.contrastSlider.value = 0;
+                    this.contrastSlider.dispatchEvent(new Event("change"))
+                    return this.getPixels()
+                });
+
+                realPixels = await pixels(initImage)
+
+                compareResult = comparePixels(userPixels, realPixels.data,
+                    "After decreasing contrast of the image to the default value it has wrong pixel values!");
+                if (compareResult) {
+                    return compareResult
+                }
+
+                userPixels = await this.page.evaluate(() => {
+                    this.transparentSlider.value = 0.5;
+                    this.transparentSlider.dispatchEvent(new Event("change"))
+                    return this.getPixels()
+                });
+
+                realPixels = await pixels(transparentTestImage)
+
+                compareResult = comparePixels(userPixels, realPixels.data,
+                    "After decreasing transparent of the image it has wrong pixel values!");
+                if (compareResult) {
+                    return compareResult
+                }
+
+                userPixels = await this.page.evaluate(() => {
+                    this.transparentSlider.value = 1;
+                    this.transparentSlider.dispatchEvent(new Event("change"))
+                    return this.getPixels()
+                });
+
+                realPixels = await pixels(initImage)
+
+                compareResult = comparePixels(userPixels, realPixels.data,
+                    "After increasing transparent of the image to the default value it has wrong pixel values!");
+                if (compareResult) {
+                    return compareResult
+                }
+
+                userPixels = await this.page.evaluate(() => {
+                    this.brightnessSlider.value = 92;
+                    this.brightnessSlider.dispatchEvent(new Event("change"))
+
+                    this.contrastSlider.value = 128;
+                    this.contrastSlider.dispatchEvent(new Event("change"))
+
+                    this.transparentSlider.value = 0.8;
+                    this.transparentSlider.dispatchEvent(new Event("change"))
+                    return this.getPixels()
+                });
+
+                realPixels = await pixels(multipleFilterTestImage)
+
+                compareResult = comparePixels(userPixels, realPixels.data,
+                    "After applying multiple filters to the image it has wrong pixel values!");
+                if (compareResult) {
+                    return compareResult
+                }
+
+                return correct()
+            })
+        ]
+    }
+
+
+    it('Test stage', async function () {
+        try {
+            this.timeout(30000)
+        } catch (ignored) {
+        }
+        await new HypergramTest().runTests()
+    }, 30000)
+  learner_created: false
+- name: src/main.js
+  visible: true
+  text: |-
+    document.addEventListener('DOMContentLoaded', () => {
+        initApp();
+    })
+
+    const initApp = () => {
+        const fileInput = document.getElementById('file-input');
+        const canvas = document.getElementById('canvas');
+        const brightnessSlider = document.getElementById('brightness');
+        const contrastSlider = document.getElementById('contrast');
+        const transparentSlider = document.getElementById('transparent');
+        const saveButton = document.getElementById('save-button');
+
+        let image = new Image();
+        // To get started with image pixels, you need to get the 2D context of the canvas with the getContext() method:
+        let ctx = canvas.getContext('2d');
+
+        fileInput.addEventListener('change', function(ev) {
+            if(ev.target.files) {
+                let file = ev.target.files[0];
+                let reader  = new FileReader();
+
+                reader.readAsDataURL(file);
+
+                reader.onloadend = function (e) {
+                    image.src = e.target.result;
+                    image.onload = function() {
+                        console.log("Loading the image.");
+                        // Set the canvas the same width and height of the image
+                        canvas.width = image.width;
+                        canvas.height = image.height;
+
+                        ctx.drawImage(image,0,0);
+                        resetSliders();
+                    }
+                }
+            }
+        });
+
+        brightnessSlider.addEventListener('change', function () {
+            changedPixelValues();
+        });
+        contrastSlider.addEventListener('change', function () {
+            changedPixelValues();
+        });
+        transparentSlider.addEventListener('change', function () {
+            changedPixelValues();
+        });
+
+        saveButton.addEventListener('click', function () {
+            // get canvas data
+            let image = canvas.toDataURL();
+
+            // create temporary link
+            let tmpLink = document.createElement( 'a' );
+            tmpLink.download = 'result.png'; // set the name of the download file
+            tmpLink.href = image;
+
+            // temporarily add link to body and initiate the download
+            document.body.appendChild( tmpLink );
+            tmpLink.click();
+            document.body.removeChild( tmpLink );
+        });
+
+
+        function changedPixelValues() {
+            let brightness = parseInt(brightnessSlider.value);
+            let contrast = parseInt(contrastSlider.value);
+            let transparent = parseFloat(transparentSlider.value);
+
+            ctx.drawImage(image, 0, 0);
+            // After that, you have to get ImageData object that stores array of the pixels:
+            let imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            // Now, you can get a pixel array. It is stored inside imageData.data object:
+            let pixels = imageData.data;
+            let factor = 259 * (255 + contrast) / (255 * (259 - contrast));
+
+            for (let i = 3; i < pixels.length; i += 4) {
+                for (let j = 1; j < 4; j++) {
+                    pixels[i-j] = truncate(factor * (pixels[i-j] - 128) + 128 + brightness);
+                }
+
+                pixels[i] *= transparent;
+            }
+
+            imageData.data = pixels;
+
+            /*
+              Once  altered the pixels of the imageData object,
+              need to put the updated pixels values on the canvas with
+              the putImageData() method of the context object:
+             */
+            ctx.putImageData(imageData, 0, 0);
+
+            console.log("brightnessSlider.value =" + brightnessSlider.value);
+            console.log("contrastSlider.value =" + contrastSlider.value);
+            console.log("transparentSlider.value =" + transparentSlider.value);
+        }
+
+        /*
+          Truncate keeps the values in the valid range, from 0 to +255.
+          If a value goes below 0, it will be truncated to zero;
+          if a value goes beyond 255, it will be truncated to 255.
+        */
+
+        function truncate(value) {
+            if (value < 0) {
+                return 0;
+            } else if (value > 255) {
+                return 255;
+            } else {
+                return value;
+            }
+        }
+
+        function resetSliders() {
+            contrastSlider.value = 0;
+            brightnessSlider.value = 0;
+            transparentSlider.value = 1;
+
+            contrastSlider.dispatchEvent(new Event("change"));
+            brightnessSlider.dispatchEvent(new Event("change"));
+            transparentSlider.dispatchEvent(new Event("change"));
+        }
+    };
+  learner_created: true
+- name: src/style.css
+  visible: true
+  text: |
+    body {
+        background-color: lightskyblue;
+        box-shadow: inset 5px 10px 15px aqua;
+        color: white;
+        display: flex;
+        flex-direction: row;
+        font-size: 15px;
+        margin: 0;
+        height: 100vh;
+        width: 100vw;
+    }
+
+    canvas {
+        align-self: stretch;
+        margin: 20px;
+    }
+
+    nav {
+        align-items: center;
+        background-color: dodgerblue;
+        box-shadow: 5px 5px 10px midnightblue, 10px 20px 35px midnightblue inset;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        height: 100vh;
+        width: 20vw;
+        position: fixed;
+        right: 0;
+        top: 0;
+    }
+
+    input {
+        margin: 5px 0 40px 0;
+        box-shadow: 5px 5px 10px midnightblue, 10px 30px 45px midnightblue inset;
+        cursor: pointer;
+        width: 12vw;
+    }
+
+    #file-input {
+        background-color: lightskyblue;
+        border-radius: 45%;
+        color: white;
+        cursor: pointer;
+        height: 7vh;
+        margin: 30px;
+        padding-top: 30px;
+        padding-left: 20px;
+        width: 12vw;
+    }
+
+    button {
+        background-color: lightskyblue;
+        border-radius: 45%;
+        box-shadow: 5px 5px 10px midnightblue, 10px 30px 45px midnightblue inset;
+        color: white;
+        cursor: pointer;
+        height: 12vh;
+        margin: 30px;
+        width: 12vw;
+    }
+  learner_created: true
+feedback_link: https://hyperskill.org/learn/step/14424#comment
+status: Solved
+feedback:
+  message: Congratulations!
+  time: "Mon, 30 Jan 2023 12:06:11 UTC"
+record: 3
